@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: promretheus-grafana
+  name: prometheus-grafana
+  namespace: sit
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: prometheus-grafana
+  template:
+    metadata:
+      labels:
+        app: prometheus-grafana
+    spec:
+      serviceAccountName: affiliate-prometheus
+      containers:
+      - image: prom/prometheus:v2.43.0
+        name: prometheus
+        ports:
+        - containerPort: 9090
+        volumeMounts:
+        - name: prometheus-config
+          mountPath: /etc/prometheus
+        - name: prometheus-storage
+          mountPath: /prometheus
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+        args:
+        - --storage.tsdb.no-lockfile
+        - --config.file=/etc/prometheus/prometheus.yml
+      - image: grafana/grafana:9.5.1
+        name: grafana
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: grafana-storage
+          mountPath: /var/lib/grafana
+        securityContext:
+          allowPrivilegeEscalation: false
+          runAsUser: 0
+      volumes:
+      - name: prometheus-config
+        configMap:
+          name: prometheus-cm
+      - name: prometheus-storage
+        persistentVolumeClaim:
+          claimName: prometheus-pvc
+      - name: grafana-storage
+        persistentVolumeClaim:
+          claimName: grafana-pvc
